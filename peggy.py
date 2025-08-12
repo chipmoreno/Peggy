@@ -1,5 +1,5 @@
 import os.path
-import base64 # Still needed for decoding, even if not explicitly printed here
+import base64
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -18,12 +18,16 @@ def extract_subject(message_payload):
             return header.get('value')
     return "No Subject Found"
 
-
-def main():
+def get_gmail_processed_data():
   """
   Authenticates with Gmail API and lists the 10 most recent messages
   (including Spam and Trash), collecting their IDs and subject lines
   into a structured list of dictionaries.
+
+  Returns:
+      list: A list of dictionaries, where each dictionary contains
+            'id' and 'subject' for a Gmail message. Returns an empty
+            list on error or if no messages are found.
   """
   creds = None
   if os.path.exists("token.json"):
@@ -52,12 +56,11 @@ def main():
 
     messages_summary_list = results.get("messages", [])
     
-    # Initialize a list to store the cleaned message data
     cleaned_messages_data = []
 
     if not messages_summary_list:
       print("No messages found matching the criteria.")
-      return cleaned_messages_data # Return empty list if no messages
+      return cleaned_messages_data
     
     print(f"Found {len(messages_summary_list)} messages. Fetching subjects...")
 
@@ -72,7 +75,6 @@ def main():
           
           subject_line = extract_subject(full_message['payload'])
           
-          # Append the structured data to our list
           cleaned_messages_data.append({
               'id': message_id,
               'subject': subject_line
@@ -83,24 +85,24 @@ def main():
       except Exception as e:
           print(f"An unexpected error occurred for ID {message_id}: {e}")
     
-    # Return the list of structured message data
     return cleaned_messages_data
 
   except HttpError as error:
     print(f"An error occurred with the Gmail API: {error}")
-    return [] # Return empty list on API error
+    return []
   except Exception as e:
     print(f"An unexpected error occurred: {e}")
-    return [] # Return empty list on general error
+    return []
 
 
 if __name__ == "__main__":
-  # Example of how to use the main function and its returned data
-  messages_for_ai = main()
-  if messages_for_ai:
-      print("\n--- Messages for AI Parsing ---")
-      for msg in messages_for_ai:
-          print(f"Subject: {msg['subject']}")
+  # This block will ONLY run when peggy.py is executed directly (e.g., python peggy.py)
+  # It will NOT run when get_gmail_processed_data is imported into another script.
+  messages_for_testing = get_gmail_processed_data()
+  if messages_for_testing:
+      print("\n--- Messages Retrieved by peggy.py (for direct run testing) ---")
+      for msg in messages_for_testing:
+          print(f"ID: {msg['id']}, Subject: {msg['subject']}")
   else:
-      print("\nNo messages were retrieved or an error occurred.")
+      print("\nNo messages were retrieved or an error occurred during direct run of peggy.py.")
 
